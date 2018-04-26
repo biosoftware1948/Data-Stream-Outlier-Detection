@@ -2,13 +2,14 @@
 
 GridOutlierDetection::GridOutlierDetection(int windowSize){
     this->windowSize = windowSize;
-    
 }
 
 dataPoint GridOutlierDetection::GetNextDataPoint(){
-    while(INPUT_BUFFER.size() < 1){                                   //buffer
-        ; // wait for 3 items in buffer
-    }  //removed for testing
+    /*Wait for item to enter buffer*/
+    while(INPUT_BUFFER.size() < 1){
+        ;
+    }
+    /*Mutex grab then convert buffer info to dataPoint */
     lock_guard<mutex> guard(bufferLock);
     vector<int> v = INPUT_BUFFER.front();
     INPUT_BUFFER.pop();
@@ -21,7 +22,8 @@ dataPoint GridOutlierDetection::GetNextDataPoint(){
     return dp;
 }
 
-void GridOutlierDetection::CreateGrid(){ //create grid and insert first point into it
+void GridOutlierDetection::CreateGrid(){
+    /*Get point and set information about data */
     dataPoint dp = this->GetNextDataPoint();
     this->dimensions = dp.values.size();//first dim is timestep
     this->partitions = round(pow(this->windowSize, (float(1)/(float(this->dimensions+1))))); //p^d+1 = w
@@ -32,13 +34,14 @@ void GridOutlierDetection::CreateGrid(){ //create grid and insert first point in
     this->bins = pow(this->partitions, this->dimensions);
     cout << "dimensions: " << this->dimensions << endl;
     cout << "Bins: " << this->bins << endl;
-    /*Axis bins */
-    
+
+    /* Create grid */
     for(int i = 0; i < this->dimensions; ++i){
         int partition_size = round( float(pow(2, 16)) / float(this->partitions) );
         int start = MIN_GRID_VAL;
         int end = MIN_GRID_VAL + partition_size;
         vector<AxisBin> axis;
+        /*Partition dimensions */
         for( int j = 0; j < this->partitions; ++j){
             AxisBin b;
             b.start = start;
@@ -51,15 +54,16 @@ void GridOutlierDetection::CreateGrid(){ //create grid and insert first point in
         this->Grid.push_back(axis);
         
     }
-    //Add first point to grid
-    this->AddToGrid(dp);
+    /*Add first point that we used to create grid into bin */
+    this->AddToBin(dp);
 }
 
 
-int GridOutlierDetection::AddToGrid(dataPoint dp){
+int GridOutlierDetection::AddToBin(dataPoint dp){
     this->currentPoints++;
     bool binExists = false;
     int binIndex;
+    
     /*Search for existence of bin */
     for (int i = 0; i < this->Bins.size(); ++i){
         int dim_count = 0;
@@ -94,10 +98,11 @@ int GridOutlierDetection::AddToGrid(dataPoint dp){
 }
 
 void GridOutlierDetection::RemoveLastFromWindow(int &t){
+    /*Pop from bin queue*/
     int binIndex = this->binOrderIndex.front();
     this->binOrderIndex.pop();
     bool deleted = false;
-    /*Sometimes inputs are missed, if this is the case we jump to next timestep with while loop */
+    /*Sometimes inputs are missed by listener, if this is the case we jump to next timestep with while loop */
     while(!deleted){
         for(auto it = this->Bins[binIndex].dataPoints.begin(); it != this->Bins[binIndex].dataPoints.end(); ++it){
             if(it->timestep == t){
@@ -107,12 +112,9 @@ void GridOutlierDetection::RemoveLastFromWindow(int &t){
                 return;
             }
         }
+        /*Input doesnt exist, jump to next timestep*/
         ++t;
     }
-    /*Sometimes this fails because we miss timesteps, so search for the next one */
-    cerr << "dataPoint not found while removing last item in window" << endl;
-    exit(0);
-    
 }
 
 void GridOutlierDetection::DetectOutliers(){
@@ -120,18 +122,18 @@ void GridOutlierDetection::DetectOutliers(){
     int currentBinIndex = 0;
     this->CreateGrid();
     
-    /*First fill the window*/
+    /*First fill the window with data*/
     dataPoint dp;
     while(currentPoints < this->windowSize){
         dp = this->GetNextDataPoint();
-        currentBinIndex = this->AddToGrid(dp);
+        currentBinIndex = this->AddToBin(dp);
         /*push bin index to queue so we can find last point in window*/
         this->binOrderIndex.push(currentBinIndex);
     }
-    //Let's go boys!
+    /*Window full, start detecting outliers. Let's go boys! */
     while(1){
         dp = this->GetNextDataPoint();
-        currentBinIndex = this->AddToGrid(dp);
+        currentBinIndex = this->AddToBin(dp);
         /*push bin index to queue so we can find last point in window*/
         this->binOrderIndex.push(currentBinIndex);
         if (Bins[currentBinIndex].count <= this->tau){
@@ -142,6 +144,3 @@ void GridOutlierDetection::DetectOutliers(){
     }
     return;
 }
-
-
-

@@ -12,16 +12,14 @@ bool ConnectionManager::createSocket(){
         cerr << "Tried to create socket even though it already exists";
         exit(0);
     }
-    /*create*/
+    /*create socket*/
     this->s = socket(AF_INET, SOCK_STREAM, 0);
-    
     if(this->s == -1){
         cerr << "Failed to create socket ugh";
         exit(0);
     }
     
     return true;
-    
 }
 
 bool ConnectionManager::connectByIPv4(){
@@ -29,14 +27,13 @@ bool ConnectionManager::connectByIPv4(){
     server.sin_family = AF_INET;
     server.sin_port = htons(this->port);
     
-    //Connect to server
+    /*Connect to server*/
     if (connect(this->s , (struct sockaddr *)&(this->server) , sizeof(this->server)) < 0)
     {
         cerr << "failed to connect to server";
         exit(0);
     }
     
-    cout<<"Connected\n";
     return true;
 }
 
@@ -68,26 +65,27 @@ void ConnectionManager::RecieveMessage(){
                 ss.ignore();
             }
         }
-        lock_guard<mutex> guard(bufferLock); // mutex for buffer grab
+        /*Mutex for buffer grab */
+        lock_guard<mutex> guard(bufferLock);
         INPUT_BUFFER.push(dataPoint);
         
         /*flush message buffer and dataPoint placeholder*/
         memset(buf, 0, sizeof(buf));
         dataPoint.clear();
     }
-    
 }
 
 bool ConnectionManager::Connect(string address, int port){
+    /*Check if hostname, if so get iP address */
     if(!isdigit(address[0]) && !isdigit(address[1])){
     	hostent *rec = gethostbyname(address.c_str());
     	in_addr *addr = (in_addr*)rec->h_addr;
     	address = inet_ntoa(*addr);
     }
-
+    /*Set vars */
     this->address = address;
     this->port = port;
-    
+    /*Create socket & Connect */
     this->createSocket();
     this->connectByIPv4();
 }
@@ -113,6 +111,4 @@ void ExtractAddressPort(string input, string &address, int& port){
 void SanitizeString(string &s){
     s.erase(remove_if(s.begin(), s.end(), ::isspace), s.end());
     return;
-    
 }
-

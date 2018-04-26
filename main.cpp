@@ -1,5 +1,7 @@
 #include "ConnectionManager.hpp"
 #include "GridOutlierDetection.hpp"
+
+/*GLOBALS*/
 mutex bufferLock;
 queue< vector<int> > INPUT_BUFFER;
 
@@ -8,28 +10,25 @@ int main(){
     string input;
     string address;
     int port;
-    
+    /*Get user input of window size, and IPv4:Port */
     cin >> windowSize;
     cin >> input;
-    //remove whitespace
+    /*remove whitespace, extract IPv4 & Port from input */
     SanitizeString(input);
     ExtractAddressPort(input, address, port);
-    
+
     ConnectionManager *C = new ConnectionManager();
     GridOutlierDetection * D = new GridOutlierDetection(windowSize);
     C->Connect(address, port);
-    cout << "windowSize: " << D->windowSize << endl;
-    
-    
-    //Threads to run concurrently
+
     thread listener(&ConnectionManager::RecieveMessage, C);
     thread detector(&GridOutlierDetection::DetectOutliers, D);
-    //join threads at end
+
     listener.join();
     detector.join();
-    
     delete C;
     delete D;
+    
     return 0;
     
 }

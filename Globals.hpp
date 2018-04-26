@@ -20,28 +20,47 @@
 #include <mutex>
 
 using namespace std;
-
+/*
+ *Global variables declared here
+ *INPUT_BUFFER is shared between listener and detector threads
+ *Mutex is used for atomicity
+ */
 extern mutex bufferLock;
 extern queue< vector<int> > INPUT_BUFFER;
 
+/*
+ *Helper functions
+ */
+/*
+ *ExtractAddressPort takes the given input in form address:port and
+ seperates them for easy use
+ */
 void ExtractAddressPort(string input, string &address, int& port);
+/*
+ *SanitizeString helps use withold whitespace free convention, it removes all
+ whitespace
+ */
 void SanitizeString(string &s);
-
+/*
+ *dataPoint holds the timestep and dimensional data of inputs
+ */
 struct dataPoint{
     int timestep;
-    vector<int> values; //indexs are dimensions
+    vector<int> values; /*indexs are dimensions*/
 };
-
+/*
+ *Axis bin, splits each axis into partitions, holds start and end of partition
+ */
 struct AxisBin{
-    int start; //index are dimensions
+    int start;
     int end;
 };
-
+/*
+ *Bin, holds the axisBins representing the binspace, has a count and datapoints
+ */
 struct Bin{
-    vector<int> AxisBinIndex; //index 0: bin in dimensions 0 of grid,
+    vector<int> AxisBinIndex; /*index 0: bin in dimensions 0 of grid*/
     int count;
-    int tau;
     list<dataPoint> dataPoints;
-    bool containsOutliers;
 };
 #endif
