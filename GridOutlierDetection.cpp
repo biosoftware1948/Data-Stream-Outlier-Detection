@@ -15,6 +15,10 @@ dataPoint GridOutlierDetection::GetNextDataPoint(){
     INPUT_BUFFER.pop();
     dataPoint dp;
     dp.timestep = v[0];
+    if(dp.timestep == -1){
+        cout << "Exit message detected, Client has disconnected, detector will now exit" << endl;
+        exit(0);
+    }
     for(int i = 1; i <v.size(); ++i){
         dp.values.push_back(v[i]);
     }
@@ -137,7 +141,14 @@ void GridOutlierDetection::DetectOutliers(){
         /*push bin index to queue so we can find last point in window*/
         this->binOrderIndex.push(currentBinIndex);
         if (Bins[currentBinIndex].count <= this->tau){
-            cout << "Outlier at Timestep: " << dp.timestep << endl;;
+            cout << "Outlier at Timestep: " << dp.timestep << " With values: ";
+            for(int i = 0; i < this->dimensions; ++i){
+                cout << dp.values[i];
+                if(i != this->dimensions -1){
+                    cout << ", ";
+                }
+            }
+            cout << endl;
         }
         this->RemoveLastFromWindow(timestepToRemove);
         ++timestepToRemove;

@@ -48,7 +48,10 @@ void ConnectionManager::RecieveMessage(){
             exit(0);
         }
         if (response == 0){
-            cout << "Client has closed connection, I will now exit. Take care friend" << endl;
+            /*Let detector thread know client is disconnected*/
+            vector<int> stop_message;
+            stop_message.push_back(-1);
+            cout << "Client has closed connection, the listener thread will now exit. Take care friend" << endl;
             exit(0);
         }
         
