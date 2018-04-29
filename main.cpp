@@ -4,6 +4,7 @@
 /*GLOBALS*/
 mutex bufferLock;
 queue< vector<int> > INPUT_BUFFER;
+bool complete = false;
 
 int main(){
     int windowSize;

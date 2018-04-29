@@ -39,7 +39,7 @@ private:
      *PARAM: timestepToRemove is the last timestep in the window, in the case of a missed message it will
      jump to the next timestep
      */
-    void RemoveLastFromWindow(int &timestepToRemove);
+    void RemoveLastFromWindow();
     
 public:
     /*

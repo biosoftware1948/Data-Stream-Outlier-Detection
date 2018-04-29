@@ -7,16 +7,19 @@ GridOutlierDetection::GridOutlierDetection(int windowSize){
 dataPoint GridOutlierDetection::GetNextDataPoint(){
     /*Wait for item to enter buffer*/
     while(INPUT_BUFFER.size() < 1){
-        ;
+        if(complete){
+            exit(0);
+        }
     }
     /*Mutex grab then convert buffer info to dataPoint */
-    lock_guard<mutex> guard(bufferLock);
+    bufferLock.lock();
     vector<int> v = INPUT_BUFFER.front();
     INPUT_BUFFER.pop();
+    bufferLock.unlock();
     dataPoint dp;
     dp.timestep = v[0];
+    
     if(dp.timestep == -1){
-        cout << "Exit message detected, Client has disconnected, detector will now exit" << endl;
         exit(0);
     }
     for(int i = 1; i <v.size(); ++i){
@@ -32,12 +35,8 @@ void GridOutlierDetection::CreateGrid(){
     this->dimensions = dp.values.size();//first dim is timestep
     this->partitions = round(pow(this->windowSize, (float(1)/(float(this->dimensions+1))))); //p^d+1 = w
     this-> tau = ceil(log10(this->partitions));
-    cout << "Tau: " << this->tau << endl;
-    cout << "partions: " << this->partitions << endl;
     
     this->bins = pow(this->partitions, this->dimensions);
-    cout << "dimensions: " << this->dimensions << endl;
-    cout << "Bins: " << this->bins << endl;
 
     /* Create grid */
     for(int i = 0; i < this->dimensions; ++i){
@@ -75,12 +74,15 @@ int GridOutlierDetection::AddToBin(dataPoint dp){
             if((dp.values[d] >= this->Grid[d][Bins[i].AxisBinIndex[d]].start) && (dp.values[d] <= this->Grid[d][Bins[i].AxisBinIndex[d]].end)){
                 ++dim_count;
             }
-            if( dim_count == this->dimensions){
-                binIndex = i;
-                Bins[binIndex].count++;
-                Bins[binIndex].dataPoints.push_back(dp);
-                return binIndex;
+            else{
+                break;
             }
+
+        }
+        if( dim_count == this->dimensions){
+            Bins[i].count++;
+            Bins[i].dataPoints.push_back(dp);
+            return i;
         }
     }
     /*Bin doesnt exist so create new one */
@@ -94,6 +96,32 @@ int GridOutlierDetection::AddToBin(dataPoint dp){
                 }
             }
         }
+        
+        //Add neighbors to bin, also add this bin to neighbors list
+        for(int n = 0; n < this->Bins.size(); ++n){
+            int all_dim = 0;
+            for(int d = 0; d < this->Bins[n].AxisBinIndex.size(); ++d){
+                if ((this->Grid[d][this->Bins[n].AxisBinIndex[d]].start -1 == this->Grid[d][b.AxisBinIndex[d]].end) || (this->Grid[d][this->Bins[n].AxisBinIndex[d]].end +1 == this->Grid[d][b.AxisBinIndex[d]].start) || (this->Grid[d][this->Bins[n].AxisBinIndex[d]].start == this->Grid[d][b.AxisBinIndex[d]].end) || (this->Grid[d][this->Bins[n].AxisBinIndex[d]].start  == this->Grid[d][b.AxisBinIndex[d]].start)){
+                    all_dim++;
+                }
+                else{
+                    break;
+                }
+
+            }//test dis
+            if(all_dim == this->Bins[n].AxisBinIndex.size()){
+                //Add neighbors to new bin
+                if(find(b.neighbors.begin(), b.neighbors.end(), n) == b.neighbors.end()){
+                    b.neighbors.push_back(n);
+                }
+                
+                //Add new bin to neighbors of other bins
+                 if(find(this->Bins[n].neighbors.begin(), this->Bins[n].neighbors.end(), 1) == this->Bins[n].neighbors.end()){
+                 this->Bins[n].neighbors.push_back(this->Bins.size());
+                 }
+            }
+        }
+        
         b.count = 1;
         b.dataPoints.push_back(dp);
         this->Bins.push_back(b);
@@ -101,30 +129,18 @@ int GridOutlierDetection::AddToBin(dataPoint dp){
     }
 }
 
-void GridOutlierDetection::RemoveLastFromWindow(int &t){
+void GridOutlierDetection::RemoveLastFromWindow(){
     /*Pop from bin queue*/
     int binIndex = this->binOrderIndex.front();
     this->binOrderIndex.pop();
-    bool deleted = false;
-    /*Sometimes inputs are missed by listener, if this is the case we jump to next timestep with while loop */
-    while(!deleted){
-        for(auto it = this->Bins[binIndex].dataPoints.begin(); it != this->Bins[binIndex].dataPoints.end(); ++it){
-            if(it->timestep == t){
-                this->Bins[binIndex].dataPoints.erase(it);
-                this->Bins[binIndex].count--;
-                --this->currentPoints;
-                return;
-            }
-        }
-        /*Input doesnt exist, jump to next timestep*/
-        ++t;
-    }
+    this->Bins[binIndex].dataPoints.pop_front();
+    this->Bins[binIndex].count--;
 }
 
 void GridOutlierDetection::DetectOutliers(){
-    int timestepToRemove = 1;
     int currentBinIndex = 0;
     this->CreateGrid();
+    bool outlier = true;
     
     /*First fill the window with data*/
     dataPoint dp;
@@ -140,7 +156,17 @@ void GridOutlierDetection::DetectOutliers(){
         currentBinIndex = this->AddToBin(dp);
         /*push bin index to queue so we can find last point in window*/
         this->binOrderIndex.push(currentBinIndex);
-        if (Bins[currentBinIndex].count <= this->tau){
+        outlier = true;
+        for(int i = 0; i < Bins[currentBinIndex].neighbors.size(); ++i){
+            if (Bins[Bins[currentBinIndex].neighbors[i]].count >= this->tau){
+                outlier = false;
+                break;
+            }
+        }
+        if(Bins[currentBinIndex].count > this->tau){
+            outlier = false;
+        }
+        if(outlier){
             cout << "Outlier at Timestep: " << dp.timestep << " With values: ";
             for(int i = 0; i < this->dimensions; ++i){
                 cout << dp.values[i];
@@ -150,8 +176,7 @@ void GridOutlierDetection::DetectOutliers(){
             }
             cout << endl;
         }
-        this->RemoveLastFromWindow(timestepToRemove);
-        ++timestepToRemove;
+        this->RemoveLastFromWindow();
     }
     return;
 }

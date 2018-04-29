@@ -18,7 +18,7 @@
 #include <cmath>
 #include <list>
 #include <mutex>
-
+#include <chrono>
 using namespace std;
 /*
  *Global variables declared here
@@ -27,6 +27,7 @@ using namespace std;
  */
 extern mutex bufferLock;
 extern queue< vector<int> > INPUT_BUFFER;
+extern bool complete;
 
 /*
  *Helper functions
@@ -62,5 +63,6 @@ struct Bin{
     vector<int> AxisBinIndex; /*index 0: bin in dimensions 0 of grid*/
     int count;
     list<dataPoint> dataPoints;
+    vector<int> neighbors; /*Holds the index of neighbor bins */
 };
 #endif

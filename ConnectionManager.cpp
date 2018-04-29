@@ -51,8 +51,9 @@ void ConnectionManager::RecieveMessage(){
             /*Let detector thread know client is disconnected*/
             vector<int> stop_message;
             stop_message.push_back(-1);
-            cout << "Client has closed connection, the listener thread will now exit. Take care friend" << endl;
-            exit(0);
+            //cout << "Client has closed connection, the listener thread will now exit. Take care friend" << endl;
+            complete = true;
+            return;
         }
         
         string s = buf;
@@ -69,8 +70,9 @@ void ConnectionManager::RecieveMessage(){
             }
         }
         /*Mutex for buffer grab */
-        lock_guard<mutex> guard(bufferLock);
+        bufferLock.lock();
         INPUT_BUFFER.push(dataPoint);
+        bufferLock.unlock();
         
         /*flush message buffer and dataPoint placeholder*/
         memset(buf, 0, sizeof(buf));
