@@ -14,6 +14,10 @@ int main(){
     /*Get user input of window size, and IPv4:Port */
     cin >> windowSize;
     cin >> input;
+    if(windowSize < 1){
+        cerr << "Window size needs to be greater than 0" << endl;
+        exit(0);
+    }
     /*remove whitespace, extract IPv4 & Port from input */
     SanitizeString(input);
     ExtractAddressPort(input, address, port);

@@ -9,13 +9,13 @@ ConnectionManager::ConnectionManager(){
 bool ConnectionManager::createSocket(){
     /*Check if socket exists */
     if(this->s != -1){
-        cerr << "Tried to create socket even though it already exists";
+        cerr << "Tried to create socket even though it already exists\n";
         exit(0);
     }
     /*create socket*/
     this->s = socket(AF_INET, SOCK_STREAM, 0);
     if(this->s == -1){
-        cerr << "Failed to create socket ugh";
+        cerr << "Failed to create socket ugh\n";
         exit(0);
     }
     
@@ -30,7 +30,7 @@ bool ConnectionManager::connectByIPv4(){
     /*Connect to server*/
     if (connect(this->s , (struct sockaddr *)&(this->server) , sizeof(this->server)) < 0)
     {
-        cerr << "failed to connect to server";
+        cerr << "failed to connect to server\n";
         exit(0);
     }
     
@@ -38,11 +38,11 @@ bool ConnectionManager::connectByIPv4(){
 }
 
 void ConnectionManager::RecieveMessage(){
-    char buf[1024];
+    char buf[32000];
     int response = 1;
     /*Recieve messages from server infinitely */
     while(1){
-        response = recv(this->s, buf, 1024, 0);
+        response = recv(this->s, buf, 32000, 0);
         if (response < 0){
             cerr << "Failure to recieve message";
             exit(0);
@@ -55,7 +55,6 @@ void ConnectionManager::RecieveMessage(){
             complete = true;
             return;
         }
-        
         string s = buf;
         /*remove whitespace*/
         s.erase(remove_if(s.begin(), s.end(), ::isspace), s.end());
@@ -84,6 +83,10 @@ bool ConnectionManager::Connect(string address, int port){
     /*Check if hostname, if so get iP address */
     if(!isdigit(address[0]) && !isdigit(address[1])){
     	hostent *rec = gethostbyname(address.c_str());
+        if(rec == NULL){
+            cerr << "Error converting host name to ipV4, exiting..." << endl;
+            exit(0);
+        }
     	in_addr *addr = (in_addr*)rec->h_addr;
     	address = inet_ntoa(*addr);
     }

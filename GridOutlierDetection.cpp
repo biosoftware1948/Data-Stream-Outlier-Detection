@@ -17,6 +17,14 @@ dataPoint GridOutlierDetection::GetNextDataPoint(){
     INPUT_BUFFER.pop();
     bufferLock.unlock();
     dataPoint dp;
+    if (v.size() == 0){
+        dp.timestep = -10;
+        return dp;
+    }
+    if(v[0] < -1){
+        dp.timestep = -10;
+        return dp;
+    }
     dp.timestep = v[0];
     
     if(dp.timestep == -1){
@@ -135,6 +143,7 @@ void GridOutlierDetection::RemoveLastFromWindow(){
     this->binOrderIndex.pop();
     this->Bins[binIndex].dataPoints.pop_front();
     this->Bins[binIndex].count--;
+    this->currentPoints--;
 }
 
 void GridOutlierDetection::DetectOutliers(){
@@ -146,6 +155,9 @@ void GridOutlierDetection::DetectOutliers(){
     dataPoint dp;
     while(currentPoints < this->windowSize){
         dp = this->GetNextDataPoint();
+        if(dp.timestep == -10){
+            continue;
+        }
         currentBinIndex = this->AddToBin(dp);
         /*push bin index to queue so we can find last point in window*/
         this->binOrderIndex.push(currentBinIndex);
@@ -153,6 +165,9 @@ void GridOutlierDetection::DetectOutliers(){
     /*Window full, start detecting outliers. Let's go boys! */
     while(1){
         dp = this->GetNextDataPoint();
+        if(dp.timestep == -10){
+            continue;
+        }
         currentBinIndex = this->AddToBin(dp);
         /*push bin index to queue so we can find last point in window*/
         this->binOrderIndex.push(currentBinIndex);
